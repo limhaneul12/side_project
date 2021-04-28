@@ -1,18 +1,20 @@
 import pymysql
 
 import pandas as pd
+import matplotlib.pyplot as plt
+
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 
-
 def database_connect():
-    conn = pymysql.connect(user="root", passwd="0000", db="side_project", host='127.0.0.1')
+    conn = pymysql.connect(user="root", passwd="000000", db="student_score", host='127.0.0.1')
     cursor = conn.cursor(pymysql.cursors.DictCursor)
 
     # database 연결 및 데이터 조회
-    sql = "SELECT * FROM 'side_project'"
+    sql = "SELECT * FROM student_score.score;"
     cursor.execute(sql)
     result = cursor.fetchall()
+    print(result)
     return pd.DataFrame(result)
 
 class AverageLinear:
@@ -28,3 +30,9 @@ class AverageLinear:
         model_prediction = linear.predict(self.X_test)
         return model_prediction
 
+    def score_prediction_visualization(self):
+        plt.scatter(self.y_test, self.linear_prediction(), alpha=0.4)
+        plt.xlabel("score")
+        plt.ylabel("subject")
+        plt.title("score average or prediction")
+        plt.show()
