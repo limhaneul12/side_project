@@ -1,10 +1,6 @@
 import pymysql
-
+import joblib
 import pandas as pd
-import matplotlib.pyplot as plt
-
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
 
 class DataBase:
     def __init__(self):
@@ -15,55 +11,37 @@ class DataBase:
         # database 연결 및 데이터 조회
         sql = "SELECT * FROM student_score.score;"
         self.cursor.execute(sql)
-        result = self.cursor.fetchall()
-        return pd.DataFrame(result)
+        return pd.DataFrame(self.cursor.fetchall())
 
-class Score:
-    def __init__(self, korean, english, math, social, science, time):
+    def database_insert(self, average, study_time, predict_study):
+        sql = """INSERT INTO score(평균, 공부시간, 예상공부시간) VALUES (%s, %s, %s)"""
+        db = self.cursor.execute(sql, (average, study_time, predict_study))
+        return self.conn.commit()
+
+class AverageLinearRegression:
+    def __init__(self, korean, english, math, social, science, time, predict_time):
         self.korean = korean
         self.english = english
         self.math = math
         self.social = social
         self.science = science
         self.time = time
+        self.predict_time = predict_time
+
+        self.X = DataBase().database_select().values[:, 1:2]
 
     # 총합
     def get_sum(self):
         return self.korean + self.english +\
                self.math + self.social + self.science
 
-    # 평균
-    def get_average(self):
+    # 데이터 저장 및 평균
+    def data_saving_average(self):
         average = self.get_sum() / 5
-
-        sql = """INSERT INTO score(국어, 영어, 수학, 사회, 과학, 평균, 공부시간) VALUES (%s, %s, %s, %s, %s, %s, %s)"""
-        data = (self.korean, self.english, self.math, self.social, self.science, average, self.time)
-        db = DataBase()
-        data_base_into = db.cursor.execute(sql, data)
-        db.conn.commit()
-
-class AverageLinear:
-    def __init__(self):
-        self.model = LinearRegression(n_jobs=-1)
-        self.X = DataBase().database_select().values[:, 1: DataBase().database_select().shape[1] - 1]
-        self.y = DataBase().database_select().values[:, DataBase().database_select().shape[1] - 1]
-        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.X, self.y, test_size=0.3,
-                                                                                shuffle=True, random_state=2021)
+        saving = DataBase().database_insert(average, self.time, self.predict_time)
 
     def linear_prediction(self):
-        linear = self.model.fit(self.X_train, self.y_train)
-        model_prediction = linear.predict(self.X_test)
-
-        return model_prediction
-
-    def score_prediction_visualization(self):
-        plt.scatter(self.y_test, self.linear_prediction(), alpha=0.4)
-        plt.xlabel("score")
-        plt.ylabel("subject")
-        plt.title("score average or prediction")
-        plt.show()
-
-
-test = AverageLinear().linear_prediction()
-
+        linear = joblib.load("score.pkl")
+        score_prediction = linear.predict(self.X)
+        return score_prediction
 
